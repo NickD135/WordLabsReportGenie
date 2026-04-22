@@ -150,3 +150,32 @@ create trigger exemplars_updated_at before update on exemplars
   for each row execute function set_updated_at();
 create trigger teacher_overrides_updated_at before update on teacher_overrides
   for each row execute function set_updated_at();
+
+-- ============================================================================
+-- Signup allowlist trigger
+-- Rejects auth.users inserts whose email is not in email_allowlist.
+-- SECURITY DEFINER so the function bypasses RLS on email_allowlist.
+-- ============================================================================
+
+create or replace function check_email_allowlist()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if not exists (
+    select 1 from email_allowlist
+    where lower(email) = lower(new.email)
+  ) then
+    raise exception 'Email address is not on the Report Genie allowlist. Contact the administrator to be added.'
+      using errcode = '42501';  -- insufficient_privilege
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists enforce_email_allowlist on auth.users;
+create trigger enforce_email_allowlist
+  before insert on auth.users
+  for each row execute function check_email_allowlist();
