@@ -9,6 +9,6 @@
 // (the anon key is public).
 
 window.REPORT_GENIE_CONFIG = {
-  supabaseUrl: 'https://YOUR_PROJECT.supabase.co',
-  supabaseAnonKey: 'YOUR_ANON_KEY_HERE',
+  supabaseUrl: 'https://ntwywhqosrvfqdnthtow.supabase.co',
+  supabaseAnonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im50d3l3aHFvc3J2ZnFkbnRodG93Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY4NDEwODgsImV4cCI6MjA5MjQxNzA4OH0.d5IM4Bu6Op4_-WXfubmDcnwvUSeRQfzLOeO0Ka0yZNw',
 };
