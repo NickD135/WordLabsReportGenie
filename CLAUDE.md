@@ -23,7 +23,7 @@ This project is **separate from Word Labs** and must not reference Word Labs any
 - **Backend:** Vercel serverless functions in `/api/` (one function: `polish.js`)
 - **Auth + central data:** Supabase, region `ap-southeast-2` (Sydney)
 - **Local data:** IndexedDB (using `idb` library via CDN for ergonomics)
-- **AI:** Anthropic API, model `claude-sonnet-4-5` (latest Sonnet at time of writing — confirm before deploy)
+- **AI:** Anthropic API, model `claude-sonnet-4-6` (latest Sonnet; revisit before each deploy)
 - **Repo:** GitHub, dev in GitHub Codespaces
 
 ## Data model
