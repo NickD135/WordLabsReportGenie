@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en-AU">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sign in — Report Genie</title>
+
+  <link rel="stylesheet" href="/css/styles.css" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.0/dist/umd/supabase.min.js"></script>
+
+  <style>
+    .login-page {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem;
+    }
+    .login-card {
+      background: var(--paper-soft);
+      border: 1px solid var(--rule);
+      border-radius: 2px;
+      width: 100%;
+      max-width: 420px;
+      padding: 3rem 2.5rem 2rem;
+      box-shadow: 0 8px 32px rgba(27, 20, 16, 0.08);
+    }
+    .login-mark {
+      font-family: var(--font-display);
+      font-size: 32px;
+      font-weight: 500;
+      font-variation-settings: "opsz" 144;
+      letter-spacing: -0.02em;
+      margin-bottom: 0.5rem;
+      display: flex;
+      align-items: baseline;
+      gap: 0.25rem;
+    }
+    .login-mark .seal-dot {
+      display: inline-block;
+      width: 8px; height: 8px;
+      background: var(--seal);
+      border-radius: 50%;
+      margin-right: 6px;
+      transform: translateY(-3px);
+    }
+    .login-mark em {
+      font-style: italic;
+      font-weight: 400;
+      color: var(--ink-soft);
+    }
+    .login-tagline {
+      font-family: var(--font-body);
+      font-size: 16px;
+      font-style: italic;
+      color: var(--ink-soft);
+      margin: 0 0 2rem;
+      line-height: 1.5;
+    }
+    .login-form { display: flex; flex-direction: column; gap: 1rem; }
+    .login-form label {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--ink-faint);
+      margin-bottom: 0.4rem;
+      display: block;
+    }
+    .login-form input {
+      width: 100%;
+      padding: 0.65rem 0.75rem;
+      font-size: 15px;
+    }
+    .login-form button {
+      width: 100%;
+      padding: 0.75rem;
+      background: var(--ink);
+      color: var(--paper);
+      border: 0;
+      font-family: var(--font-ui);
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      border-radius: 2px;
+      transition: background 0.15s;
+      margin-top: 0.5rem;
+    }
+    .login-form button:hover { background: var(--seal); }
+    .login-form button:disabled { opacity: 0.5; cursor: not-allowed; }
+    .login-msg {
+      font-family: var(--font-ui);
+      font-size: 13px;
+      padding: 0.65rem 0.85rem;
+      border-radius: 2px;
+      margin-top: 1rem;
+    }
+    .login-msg.success { background: rgba(79, 107, 65, 0.1); color: var(--sage); border: 1px solid var(--sage); }
+    .login-msg.error { background: var(--seal-faint); color: var(--seal); border: 1px solid var(--seal-soft); }
+    .login-foot {
+      margin-top: 2.5rem;
+      padding-top: 1.25rem;
+      border-top: 1px dashed var(--rule);
+      font-size: 11px;
+      color: var(--ink-faint);
+      font-family: var(--font-ui);
+      line-height: 1.55;
+      display: flex;
+      gap: 0.5rem;
+      align-items: flex-start;
+    }
+    .login-foot svg { color: var(--sage); flex-shrink: 0; margin-top: 1px; }
+  </style>
+</head>
+<body class="login-page">
+  <div class="login-card">
+    <div class="login-mark">
+      <span class="seal-dot"></span>Report <em>Genie</em>
+    </div>
+    <p class="login-tagline">A quieter way to write report comments.</p>
+
+    <form id="loginForm" class="login-form">
+      <div>
+        <label for="email">Email</label>
+        <input type="email" id="email" required autocomplete="email" placeholder="you@school.example" />
+      </div>
+      <button type="submit" id="submitBtn">Send sign-in link</button>
+    </form>
+
+    <div id="message" class="login-msg" style="display: none;"></div>
+
+    <div class="login-foot">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+      </svg>
+      <span>Student information stays in your browser. The polish step never sees a real name.</span>
+    </div>
+  </div>
+
+  <script src="/js/config.js"></script>
+  <script>
+    const sb = supabase.createClient(window.REPORT_GENIE_CONFIG.supabaseUrl, window.REPORT_GENIE_CONFIG.supabaseAnonKey);
+
+    document.getElementById('loginForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const email = document.getElementById('email').value.trim().toLowerCase();
+      const btn = document.getElementById('submitBtn');
+      const msg = document.getElementById('message');
+
+      btn.disabled = true;
+      btn.textContent = 'Sending...';
+      msg.style.display = 'none';
+
+      const { error } = await sb.auth.signInWithOtp({
+        email,
+        options: { emailRedirectTo: window.location.origin + '/' },
+      });
+
+      btn.disabled = false;
+      btn.textContent = 'Send sign-in link';
+
+      if (error) {
+        msg.textContent = `${error.message}`;
+        msg.className = 'login-msg error';
+      } else {
+        msg.textContent = `Check your inbox for a sign-in link.`;
+        msg.className = 'login-msg success';
+      }
+      msg.style.display = 'block';
+    });
+
+    sb.auth.getSession().then(({ data }) => {
+      if (data.session) window.location.href = '/';
+    });
+  </script>
+</body>
+</html>

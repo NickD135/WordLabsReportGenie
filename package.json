@@ -1,0 +1,20 @@
+{
+  "name": "report-genie",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Browser-based report comment generator for K-6 NSW primary teachers",
+  "scripts": {
+    "dev": "vercel dev",
+    "deploy": "vercel deploy --prod"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.30.1",
+    "@supabase/supabase-js": "^2.45.0"
+  },
+  "devDependencies": {
+    "vercel": "^39.0.0"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en-AU">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Report Genie</title>
+  <meta name="description" content="K-6 report comment generator for NSW primary teachers" />
+
+  <link rel="stylesheet" href="/css/styles.css" />
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.0/dist/umd/supabase.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/idb@8/build/umd.js"></script>
+</head>
+<body>
+
+  <!-- Topbar -->
+  <header class="topbar">
+    <div class="wordmark">
+      <span class="seal-dot"></span>Report <em>Genie</em>
+    </div>
+
+    <div class="topbar-meta">
+      <div class="meta-group">
+        <span class="label-mono">Class</span>
+        <select id="classSwitcher" class="ghost-btn"></select>
+      </div>
+
+      <div class="meta-group">
+        <span class="label-mono">Subject</span>
+        <div id="subjectSwitcher" class="pill-group">
+          <button data-subject="English" class="active">English</button>
+          <button data-subject="Maths">Maths</button>
+          <button data-subject="General">General</button>
+        </div>
+      </div>
+
+      <div class="meta-group">
+        <span class="label-mono">View</span>
+        <div id="viewSwitcher" class="pill-group">
+          <button data-view="byStudent" class="active">By Student</button>
+          <button data-view="byStatement">By Statement</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="topbar-right">
+      <button id="settingsBtn" class="ghost-btn">Settings</button>
+      <button id="exportBtn" class="ghost-btn">Export</button>
+      <span id="userEmail" class="user-chip"></span>
+      <button id="signOutBtn" class="ghost-btn">Sign out</button>
+    </div>
+  </header>
+
+  <!-- Privacy ribbon -->
+  <div class="privacy-bar">
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+    </svg>
+    <span><strong>On your device.</strong> Student names never leave this browser. Polishing sends only placeholder text.</span>
+  </div>
+
+  <main class="app-main">
+    <!-- Left rail: class list -->
+    <aside class="rail">
+      <div class="rail-head">
+        <h2>Students</h2>
+        <button id="addStudentBtn" class="add-btn">+ Add</button>
+      </div>
+      <div id="classMeta" class="rail-class-meta"></div>
+      <ul id="classList" style="margin: 0; padding: 0; list-style: none;"></ul>
+    </aside>
+
+    <!-- Middle: work area -->
+    <section class="work">
+      <div id="workArea">
+        <p class="work-empty">Select a student from the rail to begin, or add one with the button at the top of the list.</p>
+      </div>
+    </section>
+
+    <!-- Right: output pane -->
+    <aside class="output-pane">
+      <div id="outputArea">
+        <p class="work-empty" style="margin: 0; font-size: 14px;">The polished comment will appear here once a student is selected.</p>
+      </div>
+    </aside>
+  </main>
+
+  <!-- Settings modal -->
+  <div id="settingsModal" class="modal">
+    <div class="modal-card">
+      <div class="modal-head">
+        <h2>Settings</h2>
+        <button id="settingsClose" class="close" aria-label="Close">×</button>
+      </div>
+      <div id="settingsBody" class="modal-body"></div>
+    </div>
+  </div>
+
+  <!-- Module entry. Order matters. -->
+  <script src="/js/config.js"></script>
+  <script src="/js/auth.js"></script>
+  <script src="/js/db/indexeddb.js"></script>
+  <script src="/js/db/supabase.js"></script>
+  <script src="/js/polish/placeholder.js"></script>
+  <script src="/js/polish/collate.js"></script>
+  <script src="/js/polish/quality.js"></script>
+  <script src="/js/views/classList.js"></script>
+  <script src="/js/views/byStudent.js"></script>
+  <script src="/js/views/byStatement.js"></script>
+  <script src="/js/views/outputPanel.js"></script>
+  <script src="/js/settings/statementBank.js"></script>
+  <script src="/js/settings/prompts.js"></script>
+  <script src="/js/settings/exemplars.js"></script>
+  <script src="/js/export/docx.js"></script>
+  <script src="/js/app.js"></script>
+</body>
+</html>
