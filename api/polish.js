@@ -81,6 +81,23 @@ module.exports = async function handler(req, res) {
       });
     }
 
+    // Structural guard: the collate step must produce a labelled block so
+    // Claude can keep strengths and goals apart. If the labels are missing
+    // the browser-side collation is broken and sending the blob anyway
+    // would reproduce the goal-bleed bug. Refuse rather than degrade.
+    const hasStrengths = rawText.includes('STRENGTHS');
+    const hasGoals = rawText.includes('GOALS');
+    const hasContent = rawText.includes('CONTENT');
+    const labelsOk = subject === 'General' ? hasContent : (hasStrengths && hasGoals);
+    if (!labelsOk) {
+      return res.status(400).json({
+        error: 'Malformed collation',
+        detail: subject === 'General'
+          ? 'Expected a CONTENT label in the collated text.'
+          : 'Expected both STRENGTHS and GOALS labels in the collated text.',
+      });
+    }
+
     // Auth: verify the user via the supplied token
     const supabase = buildSupabaseClient(accessToken);
     const { data: userResult, error: userError } = await supabase.auth.getUser();

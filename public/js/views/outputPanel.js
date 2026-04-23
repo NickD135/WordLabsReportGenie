@@ -43,7 +43,7 @@
     raw.appendChild(rawSummary);
     const rawBody = document.createElement('div');
     rawBody.className = 'raw-body';
-    rawBody.textContent = await window.RG.polish.collate(student, subject) || '(no statements ticked yet)';
+    rawBody.textContent = await window.RG.polish.collateText(student, subject) || '(no statements ticked yet)';
     raw.appendChild(rawBody);
     container.appendChild(raw);
 

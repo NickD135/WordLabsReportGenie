@@ -1,17 +1,25 @@
 // /js/polish/collate.js
 //
 // Assembles the raw text from ticked statements and orchestrates the polish call.
-// Equivalent of the TEXTJOIN formula + polishBySubject() in the Sheets version,
-// but cleaner: collation, placeholder swap, API call, and re-personalisation
-// all live here.
+//
+// The collate step groups ticked statements into a structured object
+// (strengths vs goals for English/Maths; a single content bucket for
+// General, plus openings/closings) so the downstream serialiser can
+// produce a labelled prompt block. Keeping the split explicit at
+// collation time stops Claude from reshuffling goals into achievements.
 
 (function () {
-  const { getTicks, getTeacherFeedback, listOutputs, saveOutput } = window.RG.db;
+  const { getTicks, getTeacherFeedback, saveOutput } = window.RG.db;
   const { getStatements } = window.RG.bank;
-  const { depersonalise, repersonalise, isDepersonalised, PLACEHOLDER } = window.RG.placeholder;
+  const { depersonalise, repersonalise, isDepersonalised } = window.RG.placeholder;
+  const { tabKeyFor, innerSubcategoryFor, sortStatements } = window.RG.config.categoryOrder;
 
-  // Build the raw collated text for one student/subject by concatenating
-  // their ticked statements in category/position order.
+  // Build a structured collation for one student/subject. Returns
+  // null if there are no ticked statements. Shape:
+  //   English / Maths:
+  //     { subject, openings: [str], strengths: { tab: [str] }, goals: { tab: [str] } }
+  //   General:
+  //     { subject, openings: [str], content: { category: [str] }, closings: [str] }
   async function collate(student, subject) {
     const stage = stageForYearGroup(student._yearGroup);
     const allStatements = await getStatements({ subject, stage });
@@ -19,21 +27,135 @@
     const tickedIds = new Set(ticks.map(t => t.statement_id));
 
     const tickedRaw = allStatements.filter(s => tickedIds.has(s.id));
-    if (!tickedRaw.length) return '';
+    if (!tickedRaw.length) return null;
 
-    // Canonical order (tab, subcategory, position) so the polished output
-    // flows in the same order the teacher saw on screen. Strengths come
-    // before Goals within each section.
-    const ticked = window.RG.config.categoryOrder.sortStatements(subject, tickedRaw);
+    const ticked = sortStatements(subject, tickedRaw);
 
-    // Each statement already contains the {first_name} placeholder where appropriate.
-    return PLACEHOLDER + ' ' + ticked.map(s => s.content).join(' ');
+    if (subject === 'General') {
+      return bucketGeneral(ticked);
+    }
+    return bucketEnglishOrMaths(subject, ticked);
   }
 
-  // Full polish flow: collate, depersonalise (defence in depth), call /api/polish,
-  // re-personalise, store.
+  function bucketEnglishOrMaths(subject, ticked) {
+    const out = { subject, openings: [], strengths: {}, goals: {} };
+    for (const s of ticked) {
+      const tab = tabKeyFor(subject, s);
+      if ((s.category || '') === 'Opening') {
+        out.openings.push(s.content);
+        continue;
+      }
+      const inner = innerSubcategoryFor(subject, s) || '';
+      if (inner.includes('Strengths')) {
+        out.strengths[tab] = out.strengths[tab] || [];
+        out.strengths[tab].push(s.content);
+      } else if (inner.includes('Goals')) {
+        out.goals[tab] = out.goals[tab] || [];
+        out.goals[tab].push(s.content);
+      }
+      // Statements with no recognisable inner label are dropped from the
+      // prompt rather than mis-filed — the collate step must not guess.
+    }
+    return out;
+  }
+
+  function bucketGeneral(ticked) {
+    const out = { subject: 'General', openings: [], content: {}, closings: [] };
+    for (const s of ticked) {
+      const cat = s.category || '';
+      if (cat === 'Opening Statements') { out.openings.push(s.content); continue; }
+      if (cat === 'Closing Statements') { out.closings.push(s.content); continue; }
+      out.content[cat] = out.content[cat] || [];
+      out.content[cat].push(s.content);
+    }
+    return out;
+  }
+
+  // Turn the structured object into a labelled text block suitable for
+  // the user message to Claude. The labels (OPENING / STRENGTHS / GOALS /
+  // CONTENT / CLOSING) are the anchors the prompt relies on to keep
+  // strengths and goals apart in the final comment.
+  function serialiseCollation(structured, subject) {
+    if (!structured) return '';
+
+    const lines = [];
+    const pushOpenings = () => {
+      if (!structured.openings || !structured.openings.length) return;
+      lines.push('OPENING STATEMENT (use this as the opener):');
+      for (const t of structured.openings) lines.push(t);
+      lines.push('');
+    };
+
+    if (subject === 'General') {
+      pushOpenings();
+      lines.push("CONTENT — these statements describe the student's work habits, dispositions and KLA achievements. Preserve their intent when rephrasing.");
+      lines.push('');
+      const cats = Object.keys(structured.content || {});
+      if (cats.length) {
+        for (const cat of cats) {
+          lines.push(`${cat}:`);
+          for (const t of structured.content[cat]) lines.push(`- ${t}`);
+          lines.push('');
+        }
+      } else {
+        lines.push('(None selected for this comment.)');
+        lines.push('');
+      }
+      if (structured.closings && structured.closings.length) {
+        lines.push('CLOSING STATEMENT (use this as the closer):');
+        for (const t of structured.closings) lines.push(t);
+        lines.push('');
+      }
+      return lines.join('\n').trim();
+    }
+
+    // English / Maths — always emit STRENGTHS and GOALS headers so the
+    // downstream prompt and the server-side label check see a consistent
+    // structure even when the teacher has ticked an asymmetric set.
+    pushOpenings();
+
+    lines.push('STRENGTHS — these describe what the student CAN DO. They MUST appear in the achievement paragraph.');
+    lines.push('');
+    const strengthTabs = Object.keys(structured.strengths || {});
+    if (strengthTabs.length) {
+      for (const tab of strengthTabs) {
+        lines.push(`${tab}:`);
+        for (const t of structured.strengths[tab]) lines.push(`- ${t}`);
+        lines.push('');
+      }
+    } else {
+      lines.push('(None selected for this comment — omit the achievement paragraph.)');
+      lines.push('');
+    }
+
+    lines.push('GOALS — these describe what the student is WORKING ON. They MUST appear in the growth paragraph. Under no circumstances may a goal be rephrased as an achievement.');
+    lines.push('');
+    const goalTabs = Object.keys(structured.goals || {});
+    if (goalTabs.length) {
+      for (const tab of goalTabs) {
+        lines.push(`${tab}:`);
+        for (const t of structured.goals[tab]) lines.push(`- ${t}`);
+        lines.push('');
+      }
+    } else {
+      lines.push('(None selected for this comment — omit the growth paragraph.)');
+      lines.push('');
+    }
+
+    return lines.join('\n').trim();
+  }
+
+  // Convenience wrapper used by the output panel preview.
+  async function collateText(student, subject) {
+    const structured = await collate(student, subject);
+    return serialiseCollation(structured, subject);
+  }
+
+  // Full polish flow: collate, serialise, depersonalise (defence in depth),
+  // call /api/polish, re-personalise, store.
   async function polish(student, subject, archetype = 'solid_at_grade') {
-    const rawCollated = await collate(student, subject);
+    const structured = await collate(student, subject);
+    const rawCollated = serialiseCollation(structured, subject);
     if (!rawCollated || rawCollated.length < 10) {
       throw new Error('Not enough ticks to polish — select more statements.');
     }
@@ -76,10 +198,8 @@
 
     const { polished, exemplarUsed } = await res.json();
 
-    // Re-personalise on the way back
     const personalised = repersonalise(polished, student.first_name);
 
-    // Persist locally
     const saved = await saveOutput({
       student_id: student.id,
       subject,
@@ -101,5 +221,5 @@
   }
 
   window.RG = window.RG || {};
-  window.RG.polish = { collate, polish, stageForYearGroup };
+  window.RG.polish = { collate, collateText, serialiseCollation, polish, stageForYearGroup };
 })();
