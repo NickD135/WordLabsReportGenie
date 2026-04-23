@@ -18,10 +18,14 @@
     const ticks = await getTicks(student.id, subject);
     const tickedIds = new Set(ticks.map(t => t.statement_id));
 
-    const ticked = allStatements.filter(s => tickedIds.has(s.id));
-    if (!ticked.length) return '';
+    const tickedRaw = allStatements.filter(s => tickedIds.has(s.id));
+    if (!tickedRaw.length) return '';
 
-    // Order is established by getStatements (category, subcategory, position).
+    // Canonical order (tab, subcategory, position) so the polished output
+    // flows in the same order the teacher saw on screen. Strengths come
+    // before Goals within each section.
+    const ticked = window.RG.config.categoryOrder.sortStatements(subject, tickedRaw);
+
     // Each statement already contains the {first_name} placeholder where appropriate.
     return PLACEHOLDER + ' ' + ticked.map(s => s.content).join(' ');
   }

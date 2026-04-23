@@ -63,30 +63,69 @@
       return;
     }
 
-    // Group by category > subcategory
-    const grouped = groupStatements(statements);
+    // Canonical grouping: tab key > inner subcategory, Strengths before Goals.
+    const cfg = window.RG.config.categoryOrder;
+    const grouped = cfg.groupByTabAndSubcategory(subject, statements);
+    const tabs = cfg.tabsForSubject(subject, statements);
 
-    for (const [category, subcats] of Object.entries(grouped)) {
+    // Tab bar. One tab per canonical section, with a compact "ticked / total"
+    // indicator beside each label so the teacher can see at a glance which
+    // sections still need attention. Active tab gets the wax-seal underline.
+    const tabBar = document.createElement('div');
+    tabBar.className = 'section-tabs';
+    const tabButtons = {};
+    const sectionEls = {};
+
+    const tabCounts = {};
+    for (const tabKey of tabs) {
+      const subcats = grouped[tabKey] || {};
+      tabCounts[tabKey] = {
+        total: countTotal(subcats),
+        ticked: countTicked(subcats, tickedIds),
+      };
+    }
+
+    function setActive(key) {
+      for (const [k, btn] of Object.entries(tabButtons)) {
+        btn.classList.toggle('active', k === key);
+      }
+      for (const [k, el] of Object.entries(sectionEls)) {
+        el.style.display = k === key ? '' : 'none';
+      }
+    }
+
+    for (const tabKey of tabs) {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.dataset.tab = tabKey;
+      const label = document.createElement('span');
+      label.textContent = tabKey;
+      const count = document.createElement('span');
+      count.className = 'count';
+      count.textContent = `${tabCounts[tabKey].ticked} / ${tabCounts[tabKey].total}`;
+      btn.appendChild(label);
+      btn.appendChild(count);
+      btn.addEventListener('click', () => setActive(tabKey));
+      tabButtons[tabKey] = btn;
+      tabBar.appendChild(btn);
+    }
+    container.appendChild(tabBar);
+
+    for (const tabKey of tabs) {
+      const subcats = grouped[tabKey] || {};
       const section = document.createElement('section');
       section.className = 'section';
 
-      const head = document.createElement('div');
-      head.className = 'section-head';
-      const total = countTotal(subcats);
-      const ticked = countTicked(subcats, tickedIds);
-      head.innerHTML = `<h3>${escapeHtml(category)}</h3><span class="count">${ticked} of ${total} ticked</span>`;
-      section.appendChild(head);
-
-      const body = document.createElement('div');
-      head.addEventListener('click', () => body.style.display = body.style.display === 'none' ? '' : 'none');
-      section.appendChild(body);
-
-      for (const [subcat, items] of Object.entries(subcats)) {
+      const innerKeys = Object.keys(subcats).sort(
+        (a, b) => cfg.subcategoryOrderIndex(a) - cfg.subcategoryOrderIndex(b)
+      );
+      for (const subcat of innerKeys) {
+        const items = subcats[subcat];
         if (subcat) {
           const sh = document.createElement('div');
           sh.className = 'subhead';
           sh.textContent = subcat;
-          body.appendChild(sh);
+          section.appendChild(sh);
         }
         const list = document.createElement('ul');
         list.className = 'stmt-list';
@@ -114,18 +153,29 @@
             li.classList.toggle('ticked', newState);
             cb.checked = newState;
             await window.RG.db.setTick(student.id, subject, stmt.id, newState);
-            if (newState) tickedIds.add(stmt.id); else tickedIds.delete(stmt.id);
-            head.querySelector('.count').textContent = `${countTicked(subcats, tickedIds)} of ${total} ticked`;
+            if (newState) {
+              tickedIds.add(stmt.id);
+              tabCounts[tabKey].ticked++;
+            } else {
+              tickedIds.delete(stmt.id);
+              tabCounts[tabKey].ticked--;
+            }
+            const countEl = tabButtons[tabKey].querySelector('.count');
+            countEl.textContent = `${tabCounts[tabKey].ticked} / ${tabCounts[tabKey].total}`;
             onChange?.();
           });
 
           list.appendChild(li);
         }
-        body.appendChild(list);
+        section.appendChild(list);
       }
 
+      sectionEls[tabKey] = section;
       container.appendChild(section);
     }
+
+    // Default to the first tab active.
+    setActive(tabs[0]);
 
     // Teacher feedback box
     const fb = document.createElement('div');
@@ -145,18 +195,6 @@
         window.RG.db.setTeacherFeedback(student.id, subject, fbTa.value);
       }, 500);
     });
-  }
-
-  function groupStatements(statements) {
-    const out = {};
-    for (const s of statements) {
-      const cat = s.category || 'Uncategorised';
-      const sub = s.subcategory || '';
-      out[cat] = out[cat] || {};
-      out[cat][sub] = out[cat][sub] || [];
-      out[cat][sub].push(s);
-    }
-    return out;
   }
 
   function countTotal(subcats) {

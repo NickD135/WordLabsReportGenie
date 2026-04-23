@@ -361,6 +361,46 @@ textarea { font-family: var(--font-body); font-size: 15px; line-height: 1.5; res
   margin-bottom: 0.4rem;
 }
 
+/* Horizontal tab row for section navigation in By Student and By Statement.
+   Flat underline on the active tab; DM Mono small caps to echo the rest of
+   the editorial label treatment. Scrolls horizontally when the canonical
+   tab set runs long (General has 14). */
+.section-tabs {
+  display: flex;
+  gap: 0;
+  border-bottom: 1px solid var(--rule);
+  margin-bottom: 1.5rem;
+  overflow-x: auto;
+}
+.section-tabs button {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  padding: 0.7rem 0.9rem;
+  background: transparent;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  color: var(--ink-faint);
+  cursor: pointer;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  transition: color 0.12s, border-color 0.12s;
+}
+.section-tabs button:hover:not(.active) { color: var(--ink-soft); }
+.section-tabs button.active {
+  color: var(--ink);
+  border-bottom-color: var(--seal);
+}
+.section-tabs .count {
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  color: var(--ink-faint);
+}
+.section-tabs button.active .count { color: var(--ink-soft); }
+
 .stmt-list { list-style: none; padding: 0; margin: 0; }
 .stmt {
   display: flex; align-items: flex-start; gap: 0.75rem;
@@ -586,7 +626,6 @@ textarea { font-family: var(--font-body); font-size: 15px; line-height: 1.5; res
 
 /* ─────────────  By-Statement table  ───────────── */
 
-.bystmt-toolbar { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1rem; }
 .bystmt-table-wrap {
   border: 1px solid var(--rule);
   border-radius: 2px;
