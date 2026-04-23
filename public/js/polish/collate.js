@@ -79,6 +79,14 @@
     if (!structured) return '';
 
     const lines = [];
+    // Preamble names the placeholder explicitly. Guarantees {first_name}
+    // appears in the serialised text even when none of the ticked
+    // statements reference the student by name (common for General,
+    // which often uses statements like "shows strong collaboration"),
+    // so the server-side placeholder guard does not false-fire.
+    lines.push('Notes to polish into a report comment for {first_name}:');
+    lines.push('');
+
     const pushOpenings = () => {
       if (!structured.openings || !structured.openings.length) return;
       lines.push('OPENING STATEMENT (use this as the opener):');
