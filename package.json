@@ -2,6 +2,7 @@
   "name": "report-genie",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
   "description": "Browser-based report comment generator for K-6 NSW primary teachers",
   "scripts": {
     "deploy": "vercel deploy --prod"
