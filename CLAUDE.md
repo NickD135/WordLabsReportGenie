@@ -205,6 +205,25 @@ Codespaces forwards port 3000 to `https://<codespace-name>-3000.app.github.dev/`
 
 `vercel dev` does not live-reload `.env.local` changes. After editing env, kill and restart the server. Also, editing the `dev` script in `package.json` to call `vercel dev` causes recursive self-invocation — do not add a dev script back.
 
+## Deployment gotchas (learned the hard way)
+
+### The dual-package.json pattern is deliberate
+
+This repo has **two** `package.json` files: root `package.json` and `api/package.json`. Both are needed — don't delete either thinking it's cruft.
+
+- Root `package.json` declares the runtime deps (`@anthropic-ai/sdk`, `@supabase/supabase-js`) so `vercel dev` locally and Vercel's build-time install resolve them.
+- `api/package.json` does two things: sets `"type": "commonjs"` so Node treats `api/polish.js` as CJS (the function uses `require()`, not `import`), and **re-declares the same runtime deps** so Vercel installs them at the function level and lands them in `/var/task/api/node_modules/` on the deployed function.
+
+Without the sidecar deps, Vercel's root install silently reports `up to date in NNNms` during build but the function deploys without `node_modules`, and the first Polish hit crashes with `Cannot find module '@anthropic-ai/sdk'`. When bumping SDK versions, **update both files in lockstep** — otherwise the function pins to a stale version.
+
+If you ever need to add another serverless function in `api/`, add its imports to *both* package.json files too.
+
+### Verify env vars are *complete* on Vercel, not just present
+
+Vercel's env-var UI will happily accept a truncated value (e.g. copy-paste that dropped a character, Enter pressed mid-paste). The deploy won't flag it and neither will our code — `process.env.ANTHROPIC_MODEL` just returns the garbage string, and the downstream Anthropic API returns a misleading `404 not_found_error` as if the model doesn't exist.
+
+Before shipping a model change: go to Vercel → Settings → Environment Variables → click the eye icon on the value and confirm the full string matches `.env.local`. Same goes for the Supabase URL (easy to drop the trailing `.supabase.co`) and the service role key (long, easy to truncate).
+
 ## Things Nicholas already decided (don't relitigate)
 
 - No payments, no subscriptions, ever
