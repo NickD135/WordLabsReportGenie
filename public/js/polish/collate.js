@@ -65,7 +65,9 @@
 
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
-      throw new Error(err.error || `Polish failed: ${res.status}`);
+      console.error('Polish response error:', res.status, err);
+      const msg = err.detail ? `${err.error || 'Polish failed'}: ${err.detail}` : (err.error || `Polish failed: ${res.status}`);
+      throw new Error(msg);
     }
 
     const { polished, exemplarUsed } = await res.json();
