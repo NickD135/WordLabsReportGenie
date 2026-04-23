@@ -183,12 +183,27 @@ report-genie/
 │       └── export/
 │           └── docx.js              — Word export
 ├── supabase/
-│   ├── schema.sql                   — table defs + RLS policies
-│   └── seed.sql                     — initial data (statements come from CSV import)
+│   ├── schema.sql                   — table defs + RLS policies + signup allowlist trigger
+│   ├── seed.sql                     — prompts, style guides, exemplar slots
+│   └── seed-test-statements.sql     — TEMPORARY English Stage 3 seed for Week 1 testing; replaced by the real CommentBank import (Task 26)
 └── docs/
     ├── privacy-architecture.md      — for the audit trail
     └── statement-bank-import.md     — how to import the CSV
 ```
+
+## Running locally
+
+The dev loop is `vercel dev` on port 3000, with `.env.local` sourced into the shell first:
+
+```bash
+set -a && . ./.env.local && set +a && npx vercel dev --listen 3000
+```
+
+Why the `set -a` trick: `vercel dev` fetches env vars from the linked Vercel project's *Development* environment at startup. The five app env vars were set only for Production and marked Sensitive, so nothing comes down for Development. Vercel CLI's documented fallback to `.env.local` is unreliable once the cloud pull returns blanks for a variable, so we pre-export `.env.local` into the shell and let `vercel dev` inherit. When time allows, the proper fix is to tick *Development* on each of the 5 env vars in the Vercel dashboard; then `npx vercel dev` alone should work.
+
+Codespaces forwards port 3000 to `https://<codespace-name>-3000.app.github.dev/`. That URL (and `/**` under it) must be in the Supabase Auth **Site URL** / **Redirect URLs** whitelist for magic link auth to work. The URL changes when the Codespace is rebuilt — update Supabase if that happens.
+
+`vercel dev` does not live-reload `.env.local` changes. After editing env, kill and restart the server. Also, editing the `dev` script in `package.json` to call `vercel dev` causes recursive self-invocation — do not add a dev script back.
 
 ## Things Nicholas already decided (don't relitigate)
 
@@ -209,6 +224,12 @@ report-genie/
 - Single exemplar per subject (need archetype-keyed library)
 - Prompts hard-coded in script (need to be editable)
 
+## Known bugs in the current repo (backlog)
+
+Small things found incidentally during Week 1, flagged and not fixed inline per the working pattern below. Pick up when convenient.
+
+- **Silent redirect on auth error.** When Supabase returns `#error=access_denied&error_code=otp_expired...` in the hash fragment (expired or already-used magic link), the app silently bounces the user to `/login` with no explanation — looks indistinguishable from "signed in and then logged out". Detect the error hash in `auth.js`, redirect to `/login?err=...`, and show a clear "that link expired — request a new one" message on the login page. Roughly 10 lines across `auth.js` and `login.html`.
+
 ## Working with Claude Code
 
 Nicholas runs Claude Code with `--dangerously-skip-permissions --yes` and prefers numbered prompts. When generating tasks for him, structure as:
@@ -220,3 +241,21 @@ Nicholas runs Claude Code with `--dangerously-skip-permissions --yes` and prefer
 ```
 
 Not as prose paragraphs. Each numbered item should be a discrete, verifiable step.
+
+### Cadence
+
+Work one numbered task at a time. After each task, report what was done, what was tested, and whether anything is blocking. Do not batch multiple tasks into one message. It is cheap for Nicholas to say "yes, next"; it is expensive for him to disentangle a batch that went wrong three steps ago.
+
+### Who does what
+
+Claude owns code, file edits, and local verification. Nicholas owns cloud-console actions — Supabase dashboard, Vercel dashboard, Anthropic console, email, clicking the magic link in a browser, reading the Codespace Ports panel. When the next task needs a dashboard action, stop and hand Nicholas a precise, copy-pasteable checklist. Do not try to shell out to a CLI when a GUI flow is expected, and do not assume a prior cloud-console step was done — ask for a confirmation quote (error message, row count, success banner) before proceeding.
+
+### Decisions and flags
+
+- For non-trivial design or architectural decisions not covered in this doc or `docs/*.md`, stop and ask. Do not choose unilaterally.
+- For bugs or inconsistencies found incidentally while working on something else, flag them as a separate item under *Known bugs in the current repo* above and keep working on the original task. Do not fix inline.
+- When multiple paths forward exist, propose 2–3 labelled options (A/B/C) with the trade-off for each, recommend one, and let Nicholas pick with a one-word reply.
+
+### Secrets in conversation
+
+Never ask Nicholas to paste secrets (Anthropic API key, Supabase service role key) into chat. For values that need to live in `.env.local`, populate what can be populated from already-known public values, leave `PASTE_YOUR_X_HERE` sentinels for the sensitive ones, and point Nicholas at the Codespace file editor so secrets never enter the transcript.
