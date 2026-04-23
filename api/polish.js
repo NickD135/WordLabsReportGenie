@@ -17,8 +17,8 @@
 //
 // Response: { polished: string, exemplarUsed: string | null }
 
-import Anthropic from '@anthropic-ai/sdk';
-import { createClient } from '@supabase/supabase-js';
+const Anthropic = require('@anthropic-ai/sdk');
+const { createClient } = require('@supabase/supabase-js');
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
@@ -45,7 +45,7 @@ function pronounsFor(gender) {
   }
 }
 
-export default async function handler(req, res) {
+module.exports = async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
