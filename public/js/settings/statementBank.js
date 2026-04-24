@@ -54,6 +54,7 @@
       const body = document.createElement('div');
       body.className = 'p-2 space-y-1';
       for (const s of items) {
+        const wrap = document.createElement('div');
         const row = document.createElement('div');
         row.className = 'flex gap-2 items-start';
         const ta = document.createElement('textarea');
@@ -63,8 +64,13 @@
         const saveBtn = document.createElement('button');
         saveBtn.className = 'text-xs px-2 py-1 border border-slate-300 rounded hover:bg-slate-100';
         saveBtn.textContent = 'Save';
+        const errEl = document.createElement('div');
+        errEl.className = 'settings-error';
+        errEl.hidden = true;
         saveBtn.addEventListener('click', async () => {
           saveBtn.disabled = true;
+          errEl.hidden = true;
+          errEl.textContent = '';
           try {
             await window.RG.bank.saveOverride({
               table_name: 'statements',
@@ -74,14 +80,18 @@
             saveBtn.textContent = '✓ Saved';
             setTimeout(() => { saveBtn.textContent = 'Save'; saveBtn.disabled = false; }, 1500);
           } catch (e) {
-            saveBtn.textContent = 'Error';
+            saveBtn.textContent = 'Save';
             saveBtn.disabled = false;
+            errEl.textContent = e?.message || String(e);
+            errEl.hidden = false;
             console.error(e);
           }
         });
         row.appendChild(ta);
         row.appendChild(saveBtn);
-        body.appendChild(row);
+        wrap.appendChild(row);
+        wrap.appendChild(errEl);
+        body.appendChild(wrap);
       }
       section.appendChild(body);
       container.appendChild(section);

@@ -97,6 +97,15 @@ create table if not exists teacher_overrides (
 create index if not exists idx_teacher_overrides_lookup
   on teacher_overrides (teacher_id, table_name);
 
+-- One row per (teacher, table, record). Required so saveOverride can use
+-- upsert with onConflict 'teacher_id,table_name,record_id'; a plain index
+-- is not enough for Postgres to resolve the ON CONFLICT target.
+alter table teacher_overrides
+  drop constraint if exists teacher_overrides_unique_override;
+alter table teacher_overrides
+  add constraint teacher_overrides_unique_override
+  unique (teacher_id, table_name, record_id);
+
 -- ============================================================================
 -- Row Level Security
 -- ============================================================================

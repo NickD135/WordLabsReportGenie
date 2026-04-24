@@ -25,12 +25,14 @@
             <label class="text-xs">Max words <input type="number" class="w-16 border border-slate-300 rounded px-1 ml-1 wcMax" /></label>
             <button class="ml-auto text-xs px-3 py-1 border border-slate-300 rounded hover:bg-slate-100">Save</button>
           </div>
+          <div class="settings-error" hidden></div>
         </div>
       `;
       const ta = wrap.querySelector('textarea');
       const wcMin = wrap.querySelector('.wcMin');
       const wcMax = wrap.querySelector('.wcMax');
       const saveBtn = wrap.querySelector('button');
+      const errEl = wrap.querySelector('.settings-error');
 
       const promptCfg = await window.RG.bank.getPrompt(subject);
       ta.value = promptCfg.content;
@@ -40,6 +42,8 @@
       saveBtn.addEventListener('click', async () => {
         saveBtn.disabled = true;
         saveBtn.textContent = 'Saving...';
+        errEl.hidden = true;
+        errEl.textContent = '';
         try {
           await window.RG.bank.saveOverride({
             table_name: 'prompts',
@@ -50,8 +54,10 @@
           saveBtn.textContent = '✓ Saved';
           setTimeout(() => { saveBtn.textContent = 'Save'; saveBtn.disabled = false; }, 1500);
         } catch (e) {
-          saveBtn.textContent = 'Error';
+          saveBtn.textContent = 'Save';
           saveBtn.disabled = false;
+          errEl.textContent = e?.message || String(e);
+          errEl.hidden = false;
           console.error(e);
         }
       });

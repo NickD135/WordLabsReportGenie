@@ -50,15 +50,19 @@
           <div class="flex justify-end">
             <button class="text-xs px-3 py-1 border border-slate-300 rounded hover:bg-slate-100">Save</button>
           </div>
+          <div class="settings-error" hidden></div>
         </div>
       `;
       const ta = card.querySelector('textarea');
       const btn = card.querySelector('button');
+      const errEl = card.querySelector('.settings-error');
       ta.value = ex.content || '';
 
       btn.addEventListener('click', async () => {
         btn.disabled = true;
         btn.textContent = 'Saving...';
+        errEl.hidden = true;
+        errEl.textContent = '';
         try {
           await window.RG.bank.saveOverride({
             table_name: 'exemplars',
@@ -68,8 +72,10 @@
           btn.textContent = '✓ Saved';
           setTimeout(() => { btn.textContent = 'Save'; btn.disabled = false; }, 1500);
         } catch (e) {
-          btn.textContent = 'Error';
+          btn.textContent = 'Save';
           btn.disabled = false;
+          errEl.textContent = e?.message || String(e);
+          errEl.hidden = false;
           console.error(e);
         }
       });
