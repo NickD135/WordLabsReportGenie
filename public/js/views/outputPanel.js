@@ -134,6 +134,22 @@
           qualityEl.appendChild(line);
         }
       }
+
+      // Repetition advisory (silent when no flags)
+      const repFlags = window.RG.repetitionCheck?.check(ta.value) || [];
+      if (repFlags.length) {
+        const line = document.createElement('div');
+        line.className = 'quality-line warn repetition';
+        const words = repFlags
+          .map(f => `<em>${escapeHtml(f.word)}</em> (${f.count})`)
+          .join(', ');
+        line.innerHTML = `<span class="glyph">⚠</span><span class="rep-label">Possible repetition:</span><span class="rep-words">${words}</span>`;
+        qualityEl.appendChild(line);
+      }
+    }
+
+    function escapeHtml(s) {
+      return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
     }
 
     let saveTimer;

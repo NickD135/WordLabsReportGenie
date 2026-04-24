@@ -95,12 +95,76 @@
       rerender();
     });
 
-    document.getElementById('addStudentBtn').addEventListener('click', async () => {
+    document.getElementById('addStudentBtn').addEventListener('click', () => {
       if (!state.classId) { alert('Create a class first.'); return; }
-      const name = prompt('First name?');
-      if (!name) return;
-      const gender = (prompt('Pronouns? (boy / girl / they)') || 'they').toLowerCase();
-      await window.RG.db.createStudent({ class_id: state.classId, first_name: name, gender });
+      openAddStudents();
+    });
+    bindAddStudents();
+  }
+
+  // Bulk add students — one per line, "Name" or "Name, boy|girl|they"
+  function parseStudentLines(text) {
+    const rows = [];
+    const skipped = [];
+    const lines = text.split(/\r?\n/);
+    for (const raw of lines) {
+      const line = raw.trim();
+      if (!line) continue;
+      const parts = line.split(',').map(p => p.trim());
+      const name = parts[0];
+      if (!name) { skipped.push(raw); continue; }
+      let gender = (parts[1] || 'they').toLowerCase();
+      if (!['boy', 'girl', 'they'].includes(gender)) gender = 'they';
+      rows.push({ first_name: name, gender });
+    }
+    return { rows, skipped };
+  }
+
+  function openAddStudents() {
+    const modal = document.getElementById('addStudentsModal');
+    const text = document.getElementById('addStudentsText');
+    text.value = '';
+    updateAddStudentsPreview();
+    modal.classList.add('open');
+    setTimeout(() => text.focus(), 0);
+  }
+
+  function closeAddStudents() {
+    document.getElementById('addStudentsModal').classList.remove('open');
+  }
+
+  function updateAddStudentsPreview() {
+    const text = document.getElementById('addStudentsText').value;
+    const preview = document.getElementById('addStudentsPreview');
+    const confirmBtn = document.getElementById('addStudentsConfirm');
+    const { rows, skipped } = parseStudentLines(text);
+    if (!rows.length && !skipped.length) {
+      preview.textContent = '';
+      preview.classList.remove('warn');
+      confirmBtn.disabled = true;
+      return;
+    }
+    let msg = `${rows.length} student${rows.length === 1 ? '' : 's'} ready`;
+    if (skipped.length) msg += ` · ${skipped.length} line${skipped.length === 1 ? '' : 's'} skipped`;
+    preview.textContent = msg.toUpperCase();
+    preview.classList.toggle('warn', skipped.length > 0);
+    confirmBtn.disabled = rows.length === 0;
+  }
+
+  function bindAddStudents() {
+    const modal = document.getElementById('addStudentsModal');
+    const text = document.getElementById('addStudentsText');
+    text.addEventListener('input', updateAddStudentsPreview);
+    document.getElementById('addStudentsClose').addEventListener('click', closeAddStudents);
+    document.getElementById('addStudentsCancel').addEventListener('click', closeAddStudents);
+    modal.addEventListener('click', (e) => { if (e.target === modal) closeAddStudents(); });
+    document.getElementById('addStudentsConfirm').addEventListener('click', async () => {
+      const { rows } = parseStudentLines(text.value);
+      if (!rows.length) return;
+      for (const row of rows) {
+        await window.RG.db.createStudent({ class_id: state.classId, ...row });
+      }
+      closeAddStudents();
       rerender();
     });
   }
@@ -169,6 +233,11 @@
       onSelect: (stu) => {
         attachYearGroup(stu);
         state.student = stu;
+        rerender();
+      },
+      onDelete: async (stu) => {
+        await window.RG.db.deleteStudent(stu.id);
+        if (state.student?.id === stu.id) state.student = null;
         rerender();
       },
     });

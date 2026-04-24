@@ -249,6 +249,8 @@ Small things found incidentally during Week 1, flagged and not fixed inline per 
 
 - **Silent redirect on auth error.** When Supabase returns `#error=access_denied&error_code=otp_expired...` in the hash fragment (expired or already-used magic link), the app silently bounces the user to `/login` with no explanation — looks indistinguishable from "signed in and then logged out". Detect the error hash in `auth.js`, redirect to `/login?err=...`, and show a clear "that link expired — request a new one" message on the login page. Roughly 10 lines across `auth.js` and `login.html`.
 
+- **Settings views use dead Tailwind classes.** `public/js/settings/prompts.js`, `exemplars.js`, and `statementBank.js` all build their DOM with Tailwind utility classes (`w-full`, `flex`, `flex-1`, `ml-auto`, `space-y-2`, `bg-slate-100`, `border-slate-200`, `px-3`, etc.) — but this project has no Tailwind. The classes are inert, so layout falls back to browser defaults: textareas at their cols-default width, save buttons stacking vertically instead of sitting beside the field, no padding or borders on the cards. A scoped stopgap in `styles.css` (around line 816) now forces textareas to fill width so edits are usable, but the full fix is to port those three files to the design system's own classes (see `docs/design-system.md` and the `.settings-section` patterns already in `styles.css`). Until then, new settings features should use design-system classes rather than adding more Tailwind.
+
 ## Working with Claude Code
 
 Nicholas runs Claude Code with `--dangerously-skip-permissions --yes` and prefers numbered prompts. When generating tasks for him, structure as:

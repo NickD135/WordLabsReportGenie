@@ -5,7 +5,7 @@
 (function () {
   const SUBJECTS = ['English', 'Maths', 'General'];
 
-  async function render(container, { classId, className, yearGroup, selectedStudentId, onSelect }) {
+  async function render(container, { classId, className, yearGroup, selectedStudentId, onSelect, onDelete }) {
     container.innerHTML = '';
     const meta = document.getElementById('classMeta');
 
@@ -44,8 +44,25 @@
         dots.appendChild(dot);
       }
 
+      const del = document.createElement('button');
+      del.type = 'button';
+      del.className = 'student-del';
+      del.setAttribute('aria-label', `Remove ${stu.first_name}`);
+      del.title = `Remove ${stu.first_name}`;
+      del.textContent = '×';
+      del.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (!confirm(`Remove ${stu.first_name}? This deletes their ticks, outputs, and notes for every subject.`)) return;
+        if (onDelete) onDelete(stu);
+      });
+
+      const trail = document.createElement('span');
+      trail.className = 'student-trail';
+      trail.appendChild(dots);
+      trail.appendChild(del);
+
       li.appendChild(name);
-      li.appendChild(dots);
+      li.appendChild(trail);
       li.addEventListener('click', () => onSelect(stu));
       container.appendChild(li);
     }
