@@ -139,6 +139,29 @@
     }
   }
 
+  // Bulk-add ticks for a student/subject in a single transaction. Reads the
+  // existing tick set, drops any statement_id that is already ticked, and
+  // writes only the new rows. Returns counts so callers can show feedback.
+  async function addTicks(student_id, subject, statement_ids) {
+    const wanted = [...new Set((statement_ids || []).filter(Boolean))];
+    if (!wanted.length) return { added: 0, alreadyTicked: 0 };
+    const db = await open();
+    const tx = db.transaction('ticks', 'readwrite');
+    const store = tx.objectStore('ticks');
+    const existing = await store.index('by_student_subject').getAll([student_id, subject]);
+    const have = new Set(existing.map(t => t.statement_id));
+    let added = 0;
+    let alreadyTicked = 0;
+    for (const sid of wanted) {
+      if (have.has(sid)) { alreadyTicked++; continue; }
+      await store.put({ id: uuid(), student_id, subject, statement_id: sid });
+      have.add(sid);
+      added++;
+    }
+    await tx.done;
+    return { added, alreadyTicked };
+  }
+
   // ---------- Outputs ----------
 
   async function listOutputs(student_id, subject) {
@@ -218,7 +241,7 @@
   window.RG.db = {
     listClasses, createClass, deleteClass,
     listStudents, createStudent, updateStudent, deleteStudent,
-    getTicks, setTick,
+    getTicks, setTick, addTicks,
     listOutputs, saveOutput, updateOutput,
     getTeacherFeedback, setTeacherFeedback,
     exportClass,

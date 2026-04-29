@@ -85,6 +85,23 @@
       };
     }
 
+    // Photo-match prototype: English Stage 3 only.
+    if (subject === 'English' && Number(stage) === 3 && window.RG.views.photoMatch) {
+      const toolbar = document.createElement('div');
+      toolbar.className = 'work-toolbar';
+      window.RG.views.photoMatch.mountButton(toolbar, {
+        student,
+        subject,
+        stage,
+        statements,
+        onApplied: () => {
+          render(container, { student, subject, onChange });
+          onChange?.();
+        },
+      });
+      container.appendChild(toolbar);
+    }
+
     function setActive(key) {
       for (const [k, btn] of Object.entries(tabButtons)) {
         btn.classList.toggle('active', k === key);
